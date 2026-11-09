@@ -1,4 +1,4 @@
-import type { PeriodTotals, RunStats } from '@next-stride/shared';
+import { MIN_PLAUSIBLE_PACE, type PeriodTotals, type RunStats, ZONE_REFERENCE } from '@next-stride/shared';
 
 import { prisma } from '../lib/prisma';
 
@@ -51,6 +51,24 @@ async function buckets(userId: string, tz: string, unit: 'day' | 'week' | 'month
      ORDER BY bucket`;
 }
 
+/** Threshold pace from the runner's recent hard efforts, or null without enough of them. */
+async function zoneReferencePace(userId: string): Promise<number | null> {
+  const fastest = await prisma.run.findMany({
+    where: {
+      userId,
+      status: 'COMPLETED',
+      distanceMeters: { gte: ZONE_REFERENCE.minDistanceMeters },
+      averagePaceSecondsPerKm: { gte: MIN_PLAUSIBLE_PACE },
+      startedAt: { gte: new Date(Date.now() - ZONE_REFERENCE.lookbackDays * DAY_MS) },
+    },
+    orderBy: { averagePaceSecondsPerKm: 'asc' },
+    take: ZONE_REFERENCE.rank,
+    select: { averagePaceSecondsPerKm: true },
+  });
+  const reference = fastest[ZONE_REFERENCE.rank - 1]?.averagePaceSecondsPerKm;
+  return reference ? Math.round(reference * ZONE_REFERENCE.thresholdFactor) : null;
+}
+
 export async function getRunStats(userId: string, tz: string): Promise<RunStats> {
   // "Now" in the user's zone, as naive local timestamps (read back as UTC dates).
   const [now] = await prisma.$queryRaw<NowRow[]>`
@@ -63,7 +81,7 @@ export async function getRunStats(userId: string, tz: string): Promise<RunStats>
   const firstMonth = addMonths(monthStart, -5);
 
   const completed = { userId, status: 'COMPLETED' as const };
-  const [totals, daily, weekly, monthly, longestDistance, longestDuration, fastestPace] = await Promise.all([
+  const [totals, daily, weekly, monthly, longestDistance, longestDuration, fastestPace, referencePace] = await Promise.all([
     prisma.run.aggregate({
       where: completed,
       _count: { _all: true },
@@ -78,6 +96,7 @@ export async function getRunStats(userId: string, tz: string): Promise<RunStats>
       where: { ...completed, distanceMeters: { gte: 1000 }, averagePaceSecondsPerKm: { not: null } },
       orderBy: { averagePaceSecondsPerKm: 'asc' },
     }),
+    zoneReferencePace(userId),
   ]);
 
   const byKey = (rows: BucketRow[]) => new Map(rows.map((row) => [isoDate(row.bucket), row]));
@@ -127,5 +146,6 @@ export async function getRunStats(userId: string, tz: string): Promise<RunStats>
       distancePerRunMeters: runCount > 0 ? Math.round(distance / runCount) : null,
       paceSecondsPerKm: distance >= 10 && moving > 0 ? Math.round(moving / (distance / 1000)) : null,
     },
+    zoneReferencePaceSecondsPerKm: referencePace,
   };
 }

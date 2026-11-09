@@ -9,7 +9,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { RouteMap } from '@/components/map/RouteMap';
 import { GpsBadge } from '@/components/run/GpsBadge';
 import { HoldButton } from '@/components/run/HoldButton';
+import { LiveZone } from '@/components/run/RunAnalysisCards';
 import { AppModal, Banner, Button, Icon, IconButton, ScalePressable, Text } from '@/components/ui';
+import { useThresholdPace } from '@/hooks/use-runs';
 import { formatDuration, formatKm, formatPace, formatSpeedKmh } from '@/lib/format';
 import { ensureLocationPermission, type PermissionResult } from '@/services/location/location-tracker';
 import { runSession } from '@/services/run';
@@ -58,6 +60,7 @@ const PREVIEW_STALE_MS = 60_000;
 export default function RunScreen() {
   const insets = useSafeAreaInsets();
   const run = useRunStore();
+  const { threshold } = useThresholdPace();
   const [now, setNow] = useState(() => Date.now());
   const [blocker, setBlocker] = useState<Blocker | null>(null);
   const [countdown, setCountdown] = useState<number | null>(null);
@@ -301,6 +304,8 @@ export default function RunScreen() {
                 </Text>
               </View>
             </View>
+
+            {run.phase === 'recording' ? <LiveZone paceSecondsPerKm={currentPace} thresholdPace={threshold.paceSecondsPerKm} /> : null}
 
             <View style={styles.grid}>
               <Metric label="Current pace" value={formatPace(currentPace)} unit="/km" testID="run-current-pace" />

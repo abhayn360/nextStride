@@ -11,6 +11,7 @@ import { toRunSummary } from '../mappers/run.mapper';
 import { requireUserId } from '../middleware/authenticate';
 import { parseQuery } from '../middleware/validate';
 import { userRepository } from '../repositories/user.repository';
+import { getRunProgress } from '../services/run-progress.service';
 import { getRunStats } from '../services/run-stats.service';
 import { runService } from '../services/run.service';
 
@@ -42,6 +43,11 @@ export const runController = {
   async stats(req: Request, res: Response) {
     const query = parseQuery(runStatsQuerySchema, req);
     res.json(await getRunStats(requireUserId(req), query.tz));
+  },
+
+  async progress(req: Request, res: Response) {
+    const query = parseQuery(runStatsQuerySchema, req);
+    res.json(await getRunProgress(requireUserId(req), query.tz));
   },
 
   async detail(req: Request<IdParams>, res: Response) {

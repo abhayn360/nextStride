@@ -365,13 +365,48 @@ Weeks start on Monday and are computed in `tz`, which must be an IANA time zone 
     "longestDuration": { "runId": "…", "durationSeconds": 7012, "startedAt": "…" },
     "fastestPace":     { "runId": "…", "paceSecondsPerKm": 271.5, "startedAt": "…" }
   },
-  "averages": { "distancePerRunMeters": 5977, "paceSecondsPerKm": 335 }
+  "averages": { "distancePerRunMeters": 5977, "paceSecondsPerKm": 335 },
+  "zoneReferencePaceSecondsPerKm": 312
 }
 ```
 
 - `daily` has 7 entries, Monday through Sunday of the current week.
 - `weekly` covers the last 8 weeks and `monthly` the last 6 months, oldest first. Empty periods are included with zeros.
 - `fastestPace` considers only runs of at least 1 km.
+- `zoneReferencePaceSecondsPerKm` is the threshold pace used for pace zones: the third-fastest run of at least 3 km in the last 180 days, plus 3%. It is `null` until three such runs exist, and the app then falls back to the runner's stated experience.
+
+### `GET /api/runs/progress?tz=Europe/London`
+
+XP, level, streaks, weekly quests and badges. Nothing is stored: progress is replayed from completed runs on each request, so deleting a run removes what it earned. `tz` is an IANA time zone (default `UTC`). Runs under 500 m, or averaging faster than 2:30 /km, earn nothing and don't extend streaks.
+
+**200** returns:
+
+```json
+{
+  "timeZone": "Europe/London",
+  "totalXp": 2714,
+  "level": 10,
+  "title": "Pacer",
+  "xpIntoLevel": 14,
+  "xpForNextLevel": 550,
+  "streaks": {
+    "day":  { "current": 4, "longest": 4, "active": true, "atRisk": false },
+    "week": { "current": 6, "longest": 6, "active": true, "atRisk": false }
+  },
+  "quests": {
+    "weekStart": "2026-11-09",
+    "items": [{ "id": "runs", "title": "Run 3 times", "unit": "runs", "current": 1, "target": 3, "xp": 40, "completed": false }],
+    "bonusXp": 60,
+    "allComplete": false
+  },
+  "badges": [{ "id": "distance-5k", "title": "5K Finisher", "description": "Run 5 km in one go.", "category": "milestones", "tier": "bronze", "xp": 25, "unit": "km", "current": 5, "target": 5, "earned": { "at": "…", "runId": "…" } }],
+  "recentRewards": [{ "runId": "…", "xp": 110, "breakdown": [{ "label": "Distance", "xp": 50 }], "badgeIds": [], "levelBefore": 9, "levelAfter": 10 }]
+}
+```
+
+- `xpForNextLevel` is `null` at the maximum level (99).
+- `recentRewards` holds the latest 30 rewarded runs, newest first.
+- `atRisk` means the streak ends unless the runner runs by the end of this day (`day`) or week (`week`).
 
 ### `DELETE /api/runs/:id`
 

@@ -87,6 +87,17 @@ export function formatSpeedKmh(metersPerSecond: number | null | undefined): stri
   return (metersPerSecond * 3.6).toFixed(1);
 }
 
+/** Trims to one decimal without a trailing ".0": 21.097 → "21.1", 5 → "5". */
+export function formatCount(value: number): string {
+  return String(Math.round(value * 10) / 10);
+}
+
+/** "3.2 / 5 km"; goals with no measurable progress are shown as done or not. */
+export function formatProgress(current: number, target: number, unit: 'km' | 'runs' | 'days' | 'weeks' | 'min' | 'goal'): string {
+  if (unit === 'goal') return current >= target ? 'Done' : 'Not yet';
+  return `${formatCount(current)} / ${formatCount(target)} ${unit}`;
+}
+
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 /** "Thu 6 Nov · 07:12" */

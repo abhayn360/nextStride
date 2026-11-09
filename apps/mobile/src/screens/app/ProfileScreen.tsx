@@ -9,6 +9,7 @@ import { RefreshControl, ScrollView, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { ProgressSummaryCard } from '@/components/progress/ProgressSummaryCard';
 import { Avatar, Banner, Button, Card, Chip, ChipGroup, EmptyState, IconButton, ListItem, ListSection, Text } from '@/components/ui';
 import { useCurrentUser } from '@/hooks/use-profile';
 import { formatIsoDate, formatMeasurement, formatMonthYear } from '@/lib/format';
@@ -65,6 +66,10 @@ export default function ProfileScreen() {
           <Text variant="caption" tone="muted">
             Member since {formatMonthYear(user.createdAt)}
           </Text>
+        </Animated.View>
+
+        <Animated.View entering={FadeInDown.delay(40).duration(400)}>
+          <ProgressSummaryCard testID="profile-progress" />
         </Animated.View>
 
         <Animated.View entering={FadeInDown.delay(80).duration(400)} style={styles.section}>

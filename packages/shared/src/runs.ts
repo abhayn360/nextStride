@@ -153,4 +153,6 @@ export interface RunStats {
     distancePerRunMeters: number | null;
     paceSecondsPerKm: number | null;
   };
+  /** Threshold pace derived from recent runs; null until there are enough of them. */
+  zoneReferencePaceSecondsPerKm: number | null;
 }

@@ -42,9 +42,9 @@ const PAGES: Page[] = [
   },
   {
     key: 'achieve',
-    eyebrow: 'Coming soon',
+    eyebrow: 'Level up',
     title: 'Your Next Achievement',
-    body: 'XP, levels and achievements are on their way to NEXT STRIDE. Soon every kilometre you run will move you up.',
+    body: 'Earn XP for every kilometre, keep your streak alive and unlock badges as you go.',
     Illustration: AchievementIllustration,
   },
 ];

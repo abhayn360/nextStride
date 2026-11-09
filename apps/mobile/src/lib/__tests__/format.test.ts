@@ -1,4 +1,4 @@
-import { firstName, formatIsoDate, formatMeasurement, maskDateInput, parseDecimal } from '../format';
+import { firstName, formatCount, formatIsoDate, formatMeasurement, formatProgress, maskDateInput, parseDecimal } from '../format';
 
 describe('format helpers', () => {
   it('masks typed digits into YYYY-MM-DD', () => {
@@ -23,5 +23,16 @@ describe('format helpers', () => {
 
   it('extracts a first name', () => {
     expect(firstName('Ada Lovelace Runner')).toBe('Ada');
+  });
+
+  it('formats counts without trailing zeros', () => {
+    expect(formatCount(5)).toBe('5');
+    expect(formatCount(21.097)).toBe('21.1');
+  });
+
+  it('formats progress towards a target', () => {
+    expect(formatProgress(3.2, 5, 'km')).toBe('3.2 / 5 km');
+    expect(formatProgress(0, 1, 'goal')).toBe('Not yet');
+    expect(formatProgress(1, 1, 'goal')).toBe('Done');
   });
 });

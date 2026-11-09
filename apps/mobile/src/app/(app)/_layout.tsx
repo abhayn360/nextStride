@@ -29,6 +29,7 @@ export default function AppLayout() {
     >
       <Stack.Screen name="(tabs)" />
       <Stack.Screen name="edit-profile" />
+      <Stack.Screen name="progress" />
       {/* Full screen, no swipe-to-dismiss: leaving a run is always deliberate. */}
       <Stack.Screen name="run" options={{ presentation: 'fullScreenModal', gestureEnabled: false, animation: 'slide_from_bottom' }} />
       <Stack.Screen name="activity/[id]" />

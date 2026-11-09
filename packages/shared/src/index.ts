@@ -2,4 +2,6 @@ export * from './enums';
 export * from './schemas';
 export * from './api';
 export * from './run-metrics';
+export * from './run-analysis';
+export * from './gamification';
 export * from './runs';

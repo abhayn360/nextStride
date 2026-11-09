@@ -102,7 +102,7 @@ Live statistics use `statLarge` with tabular numerals, so digits don't shift as 
 
 Brand components (`@/components/brand`) are `LogoMark`, `Wordmark`, `Logo`, `BrandRings` and the onboarding illustrations.
 
-> Achievement and goal cards are deliberately left for the phases that introduce those features. They should be built from `Card`, `StatCard`, `ProgressRing` and `Chip` so the system stays consistent.
+Progress components (`@/components/progress`) and run analysis cards (`@/components/run/RunAnalysisCards`) are built from `Card`, `StatCard`, `ProgressRing` and `ProgressBar`. The `zone1`–`zone5` and `tierBronze`/`tierSilver`/`tierGold` tokens are data colours for those screens only, and are always paired with a text label.
 
 ## Rules
 

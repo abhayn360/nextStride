@@ -5,6 +5,7 @@ import type {
   CreateRunInput,
   RunDetail,
   RunPage,
+  RunProgress,
   RunStats,
   RunSummary,
 } from '@next-stride/shared';
@@ -25,6 +26,7 @@ export function createRunsApi(client: ApiClient) {
     },
     get: (runId: string) => client.request<RunDetail>(`/api/runs/${runId}`),
     stats: (timeZone: string) => client.request<RunStats>(`/api/runs/stats?tz=${encodeURIComponent(timeZone)}`),
+    progress: (timeZone: string) => client.request<RunProgress>(`/api/runs/progress?tz=${encodeURIComponent(timeZone)}`),
     remove: (runId: string) => client.request<void>(`/api/runs/${runId}`, { method: 'DELETE' }),
   };
 }

@@ -7,7 +7,9 @@ NEXT STRIDE is a running app. This repository currently holds:
 - **Phase 1:** the project foundation, authentication, user profiles, and the design system used by every later phase.
 - **Phase 2:** the running engine. GPS tracking (including with the screen locked), the live run screen, MapLibre route maps, offline recording with background sync, activity history and statistics.
 
-XP, achievements, rewards, social and AI features belong to later phases and are not implemented here.
+- **Phase 3:** training analysis and progression. Pace zones, elevation, best efforts and pacing for every run, plus XP, levels, streaks, weekly quests and badges.
+
+Social and AI features belong to later phases and are not implemented here.
 
 | | |
 | --- | --- |

@@ -2,6 +2,7 @@ import {
   computeRunMetrics,
   computeSplits,
   type GeoPoint,
+  resolveThresholdPace,
   type RunDetail,
   type RunSummary,
   type Split,
@@ -23,6 +24,7 @@ import { useRunStore } from '@/store/run.store';
 export const runKeys = {
   all: ['runs'] as const,
   stats: (tz: string) => ['runs', 'stats', tz] as const,
+  progress: (tz: string) => ['runs', 'progress', tz] as const,
   list: ['runs', 'list'] as const,
   pending: (userId: string | null, version: number) => ['runs', 'pending', userId, version] as const,
   detail: (id: string) => ['runs', 'detail', id] as const,
@@ -34,6 +36,21 @@ const toRoute = (segments: GeoPoint[][]): Route =>
 export function useRunStats() {
   const tz = deviceTimeZone();
   return useQuery({ queryKey: runKeys.stats(tz), queryFn: () => runsApi.stats(tz) });
+}
+
+export function useRunProgress() {
+  const tz = deviceTimeZone();
+  return useQuery({ queryKey: runKeys.progress(tz), queryFn: () => runsApi.progress(tz) });
+}
+
+/** The runner's threshold pace: their own history once there is enough, otherwise their stated experience. */
+export function useThresholdPace() {
+  const experience = useAuthStore((state) => state.user?.profile.runningExperience ?? null);
+  const stats = useRunStats();
+  return {
+    threshold: resolveThresholdPace({ historyPaceSecondsPerKm: stats.data?.zoneReferencePaceSecondsPerKm, experience }),
+    isLoading: stats.isLoading,
+  };
 }
 
 export function useRunHistory() {
@@ -104,6 +121,7 @@ export interface ActivityView {
   caloriesEstimate: number | null;
   pointCount: number;
   route: Route;
+  segments: GeoPoint[][];
   splits: Split[];
 }
 
@@ -125,6 +143,7 @@ function fromServer(detail: RunDetail, localId: string | null): ActivityView {
     caloriesEstimate: detail.caloriesEstimate,
     pointCount: detail.pointCount,
     route: toRoute(metrics.accumulator.segments),
+    segments: metrics.accumulator.segments,
     splits: detail.splits,
   };
 }
@@ -148,6 +167,7 @@ async function fromDevice(run: LocalRun, weightKg: number | null): Promise<Activ
     caloriesEstimate: metrics.caloriesEstimate,
     pointCount: points.length,
     route: toRoute(metrics.accumulator.segments),
+    segments: metrics.accumulator.segments,
     splits: computeSplits(metrics.accumulator.segments),
   };
 }

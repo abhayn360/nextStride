@@ -356,6 +356,84 @@ describe('GET /api/runs/stats', () => {
   });
 });
 
+describe('zone reference pace', () => {
+  it('stays null until there are three runs of at least 3 km, then uses the third fastest', async () => {
+    const { auth } = await registerUser();
+    const hour = 60 * 60 * 1000;
+    const stats = async () => (await api.get('/api/runs/stats?tz=UTC').set(auth).expect(200)).body;
+
+    await recordRun(auth, new Date(Date.now() - 2 * hour), 900, 4); // 250 s/km, 3.6 km
+    await recordRun(auth, new Date(Date.now() - 26 * hour), 990, 10 / 3); // 300 s/km, 3.3 km
+    await recordRun(auth, new Date(Date.now() - 50 * hour), 300, 5); // 1.5 km: too short to count
+    expect((await stats()).zoneReferencePaceSecondsPerKm).toBeNull();
+
+    await recordRun(auth, new Date(Date.now() - 74 * hour), 990, 3.2); // 312.5 s/km, 3.2 km
+    expect((await stats()).zoneReferencePaceSecondsPerKm).toBeCloseTo(312.5 * 1.03, -1);
+  });
+});
+
+describe('GET /api/runs/progress', () => {
+  const day = 24 * 60 * 60 * 1000;
+
+  it('requires authentication and a valid time zone', async () => {
+    await api.get('/api/runs/progress').expect(401);
+    const { auth } = await registerUser();
+    await api.get('/api/runs/progress?tz=Mars/Olympus').set(auth).expect(400);
+  });
+
+  it('starts every new runner at level 1', async () => {
+    const { auth } = await registerUser();
+    const { body } = await api.get('/api/runs/progress').set(auth).expect(200);
+    expect(body).toMatchObject({ totalXp: 0, level: 1, title: 'Rookie', timeZone: 'UTC' });
+    expect(body.quests.items).toHaveLength(3);
+    expect(body.recentRewards).toEqual([]);
+  });
+
+  it('awards XP and badges, and takes them back when the run is deleted', async () => {
+    const { auth } = await registerUser();
+    const run = await recordRun(auth, new Date(Date.now() - 2 * 60 * 60 * 1000), 300); // ~1 km
+
+    const earned = (await api.get('/api/runs/progress?tz=UTC').set(auth).expect(200)).body;
+    expect(earned.totalXp).toBeGreaterThan(0);
+    expect(earned.recentRewards[0].runId).toBe(run.id);
+    expect(earned.badges.find((badge: { id: string }) => badge.id === 'first-stride').earned.runId).toBe(run.id);
+
+    await api.delete(`/api/runs/${run.id}`).set(auth).expect(204);
+    const after = (await api.get('/api/runs/progress?tz=UTC').set(auth).expect(200)).body;
+    expect(after.totalXp).toBe(0);
+  });
+
+  it('counts a day streak from runs on consecutive days', async () => {
+    const { auth } = await registerUser();
+    const now = Date.now();
+    await recordRun(auth, new Date(now - 2 * day), 300);
+    await recordRun(auth, new Date(now - day), 300);
+    await recordRun(auth, new Date(now - 60 * 60 * 1000), 300);
+    const { body } = await api.get('/api/runs/progress?tz=UTC').set(auth).expect(200);
+    expect(body.streaks.day.longest).toBeGreaterThanOrEqual(2);
+  });
+
+  it('uses the caller time zone for calendar days', async () => {
+    const { auth } = await registerUser();
+    // 21:30 UTC is 06:30 the next morning in Tokyo: an early-bird run only there.
+    const started = new Date(Date.now() - 3 * day);
+    started.setUTCHours(21, 30, 0, 0);
+    await recordRun(auth, started, 300);
+    const earlyProgress = (tz: string) => api.get(`/api/runs/progress?tz=${tz}`).set(auth).expect(200);
+    const badge = (res: { body: { badges: { id: string; current: number }[] } }) => res.body.badges.find((item) => item.id === 'early-bird')!.current;
+    expect(badge(await earlyProgress('UTC'))).toBe(0);
+    expect(badge(await earlyProgress('Asia/Tokyo'))).toBe(1);
+  });
+
+  it('never exposes another runner', async () => {
+    const owner = await registerUser();
+    const intruder = await registerUser();
+    await recordRun(owner.auth, new Date(Date.now() - 60 * 60 * 1000), 300);
+    const { body } = await api.get('/api/runs/progress').set(intruder.auth).expect(200);
+    expect(body.totalXp).toBe(0);
+  });
+});
+
 describe('DELETE /api/runs/:id', () => {
   it('deletes the run and its points', async () => {
     const { auth } = await registerUser();

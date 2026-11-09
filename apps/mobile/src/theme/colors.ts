@@ -18,6 +18,18 @@ export const semantic = {
   info: '#38BDF8',
 } as const;
 
+/** Training zones and badge tiers read the same in both themes. Never the only signal: always paired with a label. */
+const dataColors = {
+  zone1: '#94A3B8',
+  zone2: '#38BDF8',
+  zone3: '#22C55E',
+  zone4: '#F59E0B',
+  zone5: '#EF4444',
+  tierBronze: '#CD7F32',
+  tierSilver: '#A8B2BD',
+  tierGold: '#EAB308',
+} as const;
+
 export interface ColorTokens {
   background: string;
   backgroundSecondary: string;
@@ -47,6 +59,14 @@ export interface ColorTokens {
   overlay: string;
   skeleton: string;
   skeletonHighlight: string;
+  zone1: string;
+  zone2: string;
+  zone3: string;
+  zone4: string;
+  zone5: string;
+  tierBronze: string;
+  tierSilver: string;
+  tierGold: string;
 }
 
 export const darkColors: ColorTokens = {
@@ -72,6 +92,7 @@ export const darkColors: ColorTokens = {
   overlay: 'rgba(5, 9, 13, 0.72)',
   skeleton: '#202B35',
   skeletonHighlight: '#2B3742',
+  ...dataColors,
 };
 
 export const lightColors: ColorTokens = {
@@ -98,4 +119,5 @@ export const lightColors: ColorTokens = {
   overlay: 'rgba(17, 24, 32, 0.45)',
   skeleton: '#E4E8E1',
   skeletonHighlight: '#EEF1EB',
+  ...dataColors,
 };

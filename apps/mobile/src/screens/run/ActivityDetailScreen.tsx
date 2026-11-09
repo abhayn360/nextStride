@@ -1,12 +1,15 @@
+import { analyzeRun } from '@next-stride/shared';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { ScrollView, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { RouteMap } from '@/components/map/RouteMap';
+import { RunRewardCard } from '@/components/progress/RunRewardCard';
+import { BestEffortsCard, RunInsightsCard, ZoneBreakdownCard } from '@/components/run/RunAnalysisCards';
 import { AppModal, Banner, Card, ErrorState, Icon, IconButton, Skeleton, Text } from '@/components/ui';
-import { type ActivityView, useActivity, useDeleteActivity } from '@/hooks/use-runs';
+import { type ActivityView, useActivity, useDeleteActivity, useThresholdPace } from '@/hooks/use-runs';
 import { formatDuration, formatKm, formatPace, formatRunDate, formatSpeedKmh, runTitle } from '@/lib/format';
 import { isApiError } from '@/services';
 import { runSync } from '@/services/run';
@@ -17,6 +20,12 @@ export default function ActivityDetailScreen() {
   const insets = useSafeAreaInsets();
   const { data: activity, isLoading, error, refetch } = useActivity(id);
   const remove = useDeleteActivity();
+  const { threshold, isLoading: thresholdLoading } = useThresholdPace();
+  const thresholdPace = thresholdLoading ? null : threshold.paceSecondsPerKm;
+  const analysis = useMemo(
+    () => (activity && thresholdPace ? analyzeRun(activity.segments, activity.splits, thresholdPace) : null),
+    [activity, thresholdPace],
+  );
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   const styles = useThemedStyles((t) => ({
@@ -92,6 +101,8 @@ export default function ActivityDetailScreen() {
 
           {!activity.synced ? <PendingNotice onRetry={() => void runSync.syncAll({ force: true }).then(() => refetch())} /> : null}
 
+          <RunRewardCard activity={activity} />
+
           <View style={styles.hero}>
             <View style={styles.heroCell}>
               <Text variant="statLarge" tabular testID="activity-distance">
@@ -117,16 +128,28 @@ export default function ActivityDetailScreen() {
               <Stat label="Moving time" value={formatDuration(activity.movingTimeSeconds)} />
               <Stat label="Avg speed" value={`${formatSpeedKmh(activity.averageSpeed)} km/h`} />
               <Stat label="Calories (est.)" value={activity.caloriesEstimate != null ? `${activity.caloriesEstimate} kcal` : '–'} />
+              {analysis ? (
+                <>
+                  <Stat label="Peak pace (30 s)" value={`${formatPace(analysis.peakPaceSecondsPerKm)} /km`} />
+                  <Stat label="Training load (est.)" value={`${analysis.load.score} · ${analysis.load.level}`} />
+                  <Stat label="Elevation gain (est.)" value={analysis.elevation ? `${analysis.elevation.gainMeters} m` : '–'} />
+                  <Stat label="Elevation loss (est.)" value={analysis.elevation ? `${analysis.elevation.lossMeters} m` : '–'} />
+                </>
+              ) : null}
             </View>
           </Card>
 
+          {analysis && analysis.zones.totalSeconds > 0 ? <ZoneBreakdownCard analysis={analysis} source={threshold.source} /> : null}
+          {analysis ? <RunInsightsCard analysis={analysis} /> : null}
+
           {activity.splits.length > 0 ? <Splits activity={activity} styles={styles} /> : null}
+          {analysis ? <BestEffortsCard analysis={analysis} /> : null}
 
           <View style={styles.note}>
             <Icon name="info" size={14} color="textMuted" />
             <Text variant="caption" tone="muted" style={styles.noteText}>
-              Distance, time, pace and speed are measured from {activity.pointCount} GPS points after filtering out noise. Calories are an estimate based on
-              your weight and distance.
+              Distance, time, pace and speed are measured from {activity.pointCount} GPS points after filtering out noise. Calories, elevation and training load
+              are estimates.
             </Text>
           </View>
         </Animated.View>
