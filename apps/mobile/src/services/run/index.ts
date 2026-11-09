@@ -9,6 +9,7 @@ import { useRunStore } from '@/store/run.store';
 import { createRunSession } from './run-session';
 import { createRunSync } from './run-sync';
 import { sqliteRunStore } from './sqlite-store';
+import { createRunVoiceCoach } from './voice-coach';
 
 /** Composition root for run recording and syncing. Safe to import from the headless location task. */
 const getUserId = () => useAuthStore.getState().user?.id ?? null;
@@ -40,6 +41,7 @@ export const runSession = createRunSession({
   now,
   uuid: () => Crypto.randomUUID(),
   getUserId,
+  coach: createRunVoiceCoach(),
   ui: useRunStore.getState(),
   onFinished: () => {
     notifyRunsChanged();

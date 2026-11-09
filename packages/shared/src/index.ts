@@ -4,4 +4,6 @@ export * from './api';
 export * from './run-metrics';
 export * from './run-analysis';
 export * from './gamification';
+export * from './voice-coach';
+export * from './training-report';
 export * from './runs';

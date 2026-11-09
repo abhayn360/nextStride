@@ -16,6 +16,15 @@ const STALE_FIX_TOLERANCE_MS = 3000;
 
 export type StartResult = { ok: true } | { ok: false; reason: Exclude<PermissionResult, { granted: true }>['reason'] | 'imprecise' | 'unavailable' };
 
+/** Hears about a run's progress while it records, including with the screen locked. */
+export interface RunCoach {
+  start(): void;
+  /** Continuing a run restored after the app closed. */
+  resume(distanceMeters: number): void;
+  update(progress: { now: number; distanceMeters: number; movingSeconds: number; currentSpeed: number | null }): void;
+  stop(): void;
+}
+
 export interface RunSessionDeps {
   store: RunLocalStore;
   tracker: LocationTracker;
@@ -27,6 +36,7 @@ export interface RunSessionDeps {
   onFinished?: (localId: string) => void;
   /** Called when the background task receives fixes (e.g. throttled upload). */
   onPointsRecorded?: () => void;
+  coach?: RunCoach;
 }
 
 /**
@@ -116,6 +126,7 @@ export function createRunSession(deps: RunSessionDeps) {
         }
         active = run;
         await rebuildAccumulator(run);
+        deps.coach?.resume(accumulator?.displayDistanceMeters ?? 0);
 
         if (run.status === 'recording' && !(await deps.tracker.isTracking())) {
           const stoppedAt = run.lastPointAt ?? run.segmentStartedAt ?? run.startedAt;
@@ -153,6 +164,7 @@ export function createRunSession(deps: RunSessionDeps) {
           accumulator = null;
           return { ok: false, reason: 'unavailable' };
         }
+        deps.coach?.start();
         publish({ recovered: false });
         return { ok: true };
       }),
@@ -174,6 +186,14 @@ export function createRunSession(deps: RunSessionDeps) {
           for (const point of points) accumulator?.add(point);
           lastRaw = points[points.length - 1]!;
           publish();
+          // Driven by GPS rather than the UI timer, so it keeps working with the screen locked.
+          const now = deps.now();
+          deps.coach?.update({
+            now,
+            distanceMeters: accumulator?.displayDistanceMeters ?? 0,
+            movingSeconds: (accumulator?.movingTimeMs ?? 0) / 1000,
+            currentSpeed: accumulator?.currentSpeedMps(now) ?? null,
+          });
         }
         deps.onPointsRecorded?.();
         return inserted;
@@ -211,6 +231,7 @@ export function createRunSession(deps: RunSessionDeps) {
         const now = deps.now();
         const activeMs = run.activeMs + (run.status === 'recording' ? Math.max(0, now - (run.segmentStartedAt ?? now)) : 0);
         await deps.tracker.stop().catch(() => undefined);
+        deps.coach?.stop();
 
         const points = await deps.store.listPoints(run.localId);
         const durationSeconds = Math.round(activeMs / 1000);
@@ -238,6 +259,7 @@ export function createRunSession(deps: RunSessionDeps) {
       serial(async () => {
         if (!active) return;
         await deps.tracker.stop().catch(() => undefined);
+        deps.coach?.stop();
         await deps.store.deleteRun(active.localId);
         active = null;
         accumulator = null;

@@ -408,6 +408,26 @@ XP, level, streaks, weekly quests and badges. Nothing is stored: progress is rep
 - `recentRewards` holds the latest 30 rewarded runs, newest first.
 - `atRisk` means the streak ends unless the runner runs by the end of this day (`day`) or week (`week`).
 
+### `GET /api/runs/report?tz=Europe/London`
+
+Weekly training report. `tz` is an IANA time zone (default `UTC`). The first time a run is included, its seconds per pace zone are calculated from its GPS points and cached in `runs.zone_seconds`.
+
+**200** returns:
+
+```json
+{
+  "timeZone": "Europe/London",
+  "last7Days": { "runs": 5, "distanceMeters": 27500, "durationSeconds": 9420, "load": 678, "zoneSeconds": [300, 0, 3600, 3000, 2460], "easySeconds": 300, "hardSeconds": 9060, "easyPercent": 3, "balance": "too-hard" },
+  "previous7Days": { "runs": 2, "distanceMeters": 12600, "durationSeconds": 4200, "load": 310 },
+  "loadTrend": { "acute": 678, "chronic": 294, "ratio": 2.31, "status": "high" },
+  "weeks": [{ "weekStart": "2026-09-21", "runs": 0, "distanceMeters": 0, "durationSeconds": 0, "load": 0, "easySeconds": 0, "hardSeconds": 0 }]
+}
+```
+
+- Easy is Z1–Z2 and hard is Z3–Z5. `balance` is `balanced` at 75% easy or more, `too-hard` below that, and `not-enough-data` under 30 minutes of zone time.
+- `loadTrend.ratio` is the last 7 days divided by the average week of the 28 days before. It is `null` with fewer than 3 baseline runs. `status` is `building`, `low` (under 0.8), `steady`, `elevated` (over 1.3) or `high` (over 1.5).
+- `weeks` has 8 entries, oldest first, ending with the current week.
+
 ### `DELETE /api/runs/:id`
 
 **204**. Deletes the run and its points. Errors: `404`.

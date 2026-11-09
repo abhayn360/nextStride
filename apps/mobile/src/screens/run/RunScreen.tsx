@@ -16,6 +16,7 @@ import { formatDuration, formatKm, formatPace, formatSpeedKmh } from '@/lib/form
 import { ensureLocationPermission, type PermissionResult } from '@/services/location/location-tracker';
 import { runSession } from '@/services/run';
 import type { StartResult } from '@/services/run/run-session';
+import { usePreferencesStore } from '@/store/preferences.store';
 import { elapsedMs, useRunStore } from '@/store/run.store';
 import { useThemedStyles } from '@/theme';
 
@@ -61,6 +62,8 @@ export default function RunScreen() {
   const insets = useSafeAreaInsets();
   const run = useRunStore();
   const { threshold } = useThresholdPace();
+  const voiceOn = usePreferencesStore((state) => state.voiceCoachEnabled);
+  const setVoicePreferences = usePreferencesStore((state) => state.setVoicePreferences);
   const [now, setNow] = useState(() => Date.now());
   const [blocker, setBlocker] = useState<Blocker | null>(null);
   const [countdown, setCountdown] = useState<number | null>(null);
@@ -74,6 +77,7 @@ export default function RunScreen() {
     root: { flex: 1, backgroundColor: t.colors.background },
     map: { flex: 1 },
     topBar: { position: 'absolute', left: t.spacing.md, right: t.spacing.md, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+    topRight: { flexDirection: 'row', alignItems: 'center', gap: t.spacing.xs },
     panel: {
       backgroundColor: t.colors.background,
       borderTopLeftRadius: t.radius.modal,
@@ -227,7 +231,18 @@ export default function RunScreen() {
           onPress={() => router.back()}
           testID="run-close"
         />
-        <GpsBadge signal={gps} />
+        <View style={styles.topRight}>
+          {active ? (
+            <IconButton
+              icon={voiceOn ? 'volume-2' : 'volume-x'}
+              variant="filled"
+              accessibilityLabel={voiceOn ? 'Mute voice coach' : 'Unmute voice coach'}
+              onPress={() => setVoicePreferences({ voiceCoachEnabled: !voiceOn })}
+              testID="run-voice"
+            />
+          ) : null}
+          <GpsBadge signal={gps} />
+        </View>
       </View>
 
       <View style={[styles.panel, { paddingBottom: Math.max(insets.bottom, 16) + 8 }]}>

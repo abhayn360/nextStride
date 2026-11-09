@@ -105,3 +105,12 @@ Runs are tagged with the account that recorded them. Logging out keeps pending r
 - **Development build required:** the full experience needs a development build (`npx expo run:ios` / `run:android`, or EAS Build), because Expo Go includes neither MapLibre nor this app's background location configuration.
 - **Simulators:** iOS simulators deliver one fix for a fixed location. Use `xcrun simctl location booted start …` (or the Simulator's Features → Location → City Run) for continuous movement.
 - **Accuracy:** GPS is typically 3–10 m in the open and much worse between tall buildings. Filtering removes noise and jumps, but no filter can fix systematically wrong fixes.
+
+## Voice coach
+
+`services/run/voice-coach.ts` speaks what `VoiceCoach` (`packages/shared`) decides. It is driven by incoming GPS fixes in `runSession.ingest`, not the screen timer, so it keeps working with the screen locked.
+
+- iOS needs the `audio` background mode (set in `app.json`). Speech uses a system-managed audio session so it mixes with music.
+- iOS physical devices stay silent in silent mode, according to the `expo-speech` docs.
+- A zone alert needs 45 seconds above the chosen zone, then waits at least 3 minutes before repeating.
+- After a run is restored, already-covered kilometres aren't repeated and the next split is left out, because its start time is unknown.

@@ -6,10 +6,11 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { LogoMark } from '@/components/brand/Logo';
 import { ProgressSummaryCard } from '@/components/progress/ProgressSummaryCard';
+import { TrainingReportCard } from '@/components/report/TrainingReportCard';
 import { BarChart } from '@/components/run/BarChart';
 import { RunCard } from '@/components/run/RunCard';
 import { Avatar, Banner, Button, Card, EmptyState, Icon, ScalePressable, Skeleton, StatCard, Text } from '@/components/ui';
-import { summaryToCard, usePendingRuns, useRunHistory, useRunProgress, useRunStats } from '@/hooks/use-runs';
+import { summaryToCard, usePendingRuns, useRunHistory, useRunProgress, useRunStats, useTrainingReport } from '@/hooks/use-runs';
 import { firstName, formatDuration, formatKm, formatPace, formatTotalTime, greeting, weekdayInitial } from '@/lib/format';
 import { isApiError } from '@/services';
 import { useAuthStore } from '@/store/auth.store';
@@ -23,6 +24,7 @@ export default function HomeScreen() {
   const runPhase = useRunStore((state) => state.phase);
   const stats = useRunStats();
   const progress = useRunProgress();
+  const report = useTrainingReport();
   const history = useRunHistory();
   const pending = usePendingRuns();
 
@@ -55,6 +57,7 @@ export default function HomeScreen() {
   const refresh = () => {
     void stats.refetch();
     void progress.refetch();
+    void report.refetch();
     void history.refetch();
     void pending.refetch();
   };
@@ -108,6 +111,10 @@ export default function HomeScreen() {
 
         <Animated.View entering={FadeInDown.delay(90).duration(400)}>
           <ProgressSummaryCard testID="home-progress" />
+        </Animated.View>
+
+        <Animated.View entering={FadeInDown.delay(100).duration(400)}>
+          <TrainingReportCard />
         </Animated.View>
 
         {stats.error && !data ? (

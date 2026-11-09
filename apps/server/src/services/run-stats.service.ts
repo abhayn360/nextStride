@@ -52,7 +52,7 @@ async function buckets(userId: string, tz: string, unit: 'day' | 'week' | 'month
 }
 
 /** Threshold pace from the runner's recent hard efforts, or null without enough of them. */
-async function zoneReferencePace(userId: string): Promise<number | null> {
+export async function zoneReferencePace(userId: string): Promise<number | null> {
   const fastest = await prisma.run.findMany({
     where: {
       userId,

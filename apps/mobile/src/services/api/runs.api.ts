@@ -8,6 +8,7 @@ import type {
   RunProgress,
   RunStats,
   RunSummary,
+  TrainingReport,
 } from '@next-stride/shared';
 
 import type { ApiClient } from './client';
@@ -27,6 +28,7 @@ export function createRunsApi(client: ApiClient) {
     get: (runId: string) => client.request<RunDetail>(`/api/runs/${runId}`),
     stats: (timeZone: string) => client.request<RunStats>(`/api/runs/stats?tz=${encodeURIComponent(timeZone)}`),
     progress: (timeZone: string) => client.request<RunProgress>(`/api/runs/progress?tz=${encodeURIComponent(timeZone)}`),
+    report: (timeZone: string) => client.request<TrainingReport>(`/api/runs/report?tz=${encodeURIComponent(timeZone)}`),
     remove: (runId: string) => client.request<void>(`/api/runs/${runId}`, { method: 'DELETE' }),
   };
 }

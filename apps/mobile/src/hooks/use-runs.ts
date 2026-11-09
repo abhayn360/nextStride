@@ -25,6 +25,7 @@ export const runKeys = {
   all: ['runs'] as const,
   stats: (tz: string) => ['runs', 'stats', tz] as const,
   progress: (tz: string) => ['runs', 'progress', tz] as const,
+  report: (tz: string) => ['runs', 'report', tz] as const,
   list: ['runs', 'list'] as const,
   pending: (userId: string | null, version: number) => ['runs', 'pending', userId, version] as const,
   detail: (id: string) => ['runs', 'detail', id] as const,
@@ -41,6 +42,11 @@ export function useRunStats() {
 export function useRunProgress() {
   const tz = deviceTimeZone();
   return useQuery({ queryKey: runKeys.progress(tz), queryFn: () => runsApi.progress(tz) });
+}
+
+export function useTrainingReport() {
+  const tz = deviceTimeZone();
+  return useQuery({ queryKey: runKeys.report(tz), queryFn: () => runsApi.report(tz) });
 }
 
 /** The runner's threshold pace: their own history once there is enough, otherwise their stated experience. */

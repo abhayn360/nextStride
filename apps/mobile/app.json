@@ -10,7 +10,10 @@
     "backgroundColor": "#111820",
     "ios": {
       "bundleIdentifier": "com.nextstride.app",
-      "supportsTablet": false
+      "supportsTablet": false,
+      "infoPlist": {
+        "UIBackgroundModes": ["audio"]
+      }
     },
     "android": {
       "package": "com.nextstride.app",

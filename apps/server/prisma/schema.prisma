@@ -167,6 +167,8 @@ model Run {
   pointCount              Int       @default(0) @map("point_count")
   /// Downsampled [lng, lat] lines per segment, for list thumbnails without loading points.
   routePreview            Json?     @map("route_preview")
+  /// Seconds in pace zones Z1–Z5. Filled the first time a training report needs it.
+  zoneSeconds             Json?     @map("zone_seconds")
   startedAt               DateTime  @map("started_at")
   completedAt             DateTime? @map("completed_at")
   createdAt               DateTime  @default(now()) @map("created_at")

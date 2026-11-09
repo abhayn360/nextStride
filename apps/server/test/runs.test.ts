@@ -434,6 +434,47 @@ describe('GET /api/runs/progress', () => {
   });
 });
 
+describe('GET /api/runs/report', () => {
+  it('requires authentication and a valid time zone', async () => {
+    await api.get('/api/runs/report').expect(401);
+    const { auth } = await registerUser();
+    await api.get('/api/runs/report?tz=Mars/Olympus').set(auth).expect(400);
+  });
+
+  it('handles a runner with no runs', async () => {
+    const { auth } = await registerUser();
+    const { body } = await api.get('/api/runs/report').set(auth).expect(200);
+    expect(body.last7Days).toMatchObject({ runs: 0, easyPercent: null, balance: 'not-enough-data' });
+    expect(body.loadTrend).toMatchObject({ ratio: null, status: 'building' });
+    expect(body.weeks).toHaveLength(8);
+  });
+
+  it('calculates zone time from the GPS track and caches it on the run', async () => {
+    const { auth } = await registerUser();
+    const run = await recordRun(auth, new Date(Date.now() - 2 * 60 * 60 * 1000), 600);
+
+    const first = (await api.get('/api/runs/report?tz=UTC').set(auth).expect(200)).body;
+    expect(first.last7Days.runs).toBe(1);
+    expect(first.last7Days.zoneSeconds.reduce((a: number, b: number) => a + b, 0)).toBeGreaterThan(590);
+
+    const stored = await prisma.run.findUniqueOrThrow({ where: { id: run.id } });
+    expect(stored.zoneSeconds).toEqual(first.last7Days.zoneSeconds);
+
+    // The cached values are what the next report reads, not the points.
+    await prisma.runPoint.deleteMany({ where: { runId: run.id } });
+    const second = (await api.get('/api/runs/report?tz=UTC').set(auth).expect(200)).body;
+    expect(second.last7Days.zoneSeconds).toEqual(first.last7Days.zoneSeconds);
+  });
+
+  it('never exposes another runner', async () => {
+    const owner = await registerUser();
+    const intruder = await registerUser();
+    await recordRun(owner.auth, new Date(Date.now() - 60 * 60 * 1000), 300);
+    const { body } = await api.get('/api/runs/report').set(intruder.auth).expect(200);
+    expect(body.last7Days.runs).toBe(0);
+  });
+});
+
 describe('DELETE /api/runs/:id', () => {
   it('deletes the run and its points', async () => {
     const { auth } = await registerUser();

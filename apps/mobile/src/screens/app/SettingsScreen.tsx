@@ -9,8 +9,9 @@ import { useLogout } from '@/hooks/use-auth';
 import { useUpdateProfile } from '@/hooks/use-profile';
 import { usePendingRuns } from '@/hooks/use-runs';
 import { isApiError } from '@/services';
+import { speakVoiceCoachSample } from '@/services/run/voice-coach';
 import { useAuthStore } from '@/store/auth.store';
-import { usePreferencesStore } from '@/store/preferences.store';
+import { usePreferencesStore, type ZoneAlertCeiling } from '@/store/preferences.store';
 import { useRunStore } from '@/store/run.store';
 import { useThemedStyles } from '@/theme';
 import type { ThemePreference } from '@/theme/themes';
@@ -21,10 +22,21 @@ const THEME_OPTIONS: { value: ThemePreference; label: string }[] = [
   { value: 'light', label: 'Light' },
 ];
 
+const ZONE_ALERT_OPTIONS: { value: ZoneAlertCeiling; label: string }[] = [
+  { value: 'off', label: 'Off' },
+  { value: '2', label: 'Above Z2' },
+  { value: '3', label: 'Above Z3' },
+  { value: '4', label: 'Above Z4' },
+];
+
 export default function SettingsScreen() {
   const user = useAuthStore((state) => state.user);
   const themePreference = usePreferencesStore((state) => state.themePreference);
   const setThemePreference = usePreferencesStore((state) => state.setThemePreference);
+  const voiceCoachEnabled = usePreferencesStore((state) => state.voiceCoachEnabled);
+  const voiceSplits = usePreferencesStore((state) => state.voiceSplits);
+  const zoneAlertCeiling = usePreferencesStore((state) => state.zoneAlertCeiling);
+  const setVoicePreferences = usePreferencesStore((state) => state.setVoicePreferences);
   const update = useUpdateProfile();
   const logout = useLogout();
   const [confirmLogout, setConfirmLogout] = useState(false);
@@ -64,6 +76,33 @@ export default function SettingsScreen() {
           Appearance
         </Text>
         <SegmentedControl options={THEME_OPTIONS} value={themePreference} onChange={setThemePreference} accessibilityLabel="Theme" />
+      </View>
+
+      <ListSection title="Voice coach" footer="Works with the screen locked and plays over your music. On iPhone, turn off silent mode to hear it.">
+        <ListItem
+          label="Voice coach"
+          toggle={{ value: voiceCoachEnabled, onChange: (value) => setVoicePreferences({ voiceCoachEnabled: value }) }}
+          testID="voice-enabled"
+        />
+        <ListItem
+          label="Kilometre splits"
+          description="Your split and average pace each kilometre"
+          toggle={{ value: voiceSplits, onChange: (value) => setVoicePreferences({ voiceSplits: value }), disabled: !voiceCoachEnabled }}
+          testID="voice-splits"
+        />
+        <ListItem icon="volume-2" label="Play a sample" onPress={speakVoiceCoachSample} testID="voice-sample" />
+      </ListSection>
+
+      <View style={styles.section}>
+        <Text variant="overline" tone="secondary">
+          Tell me to ease back
+        </Text>
+        <SegmentedControl
+          options={ZONE_ALERT_OPTIONS}
+          value={zoneAlertCeiling}
+          onChange={(value) => setVoicePreferences({ zoneAlertCeiling: value })}
+          accessibilityLabel="Tell me to ease back"
+        />
       </View>
 
       {update.isError ? (

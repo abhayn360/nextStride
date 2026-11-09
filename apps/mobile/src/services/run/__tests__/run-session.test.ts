@@ -233,3 +233,58 @@ describe('discard', () => {
     expect(store.points).toHaveLength(0);
   });
 });
+
+describe('voice coach', () => {
+  function withCoach() {
+    const context = setup();
+    const coach = { start: jest.fn(), resume: jest.fn(), update: jest.fn(), stop: jest.fn() };
+    const session = createRunSession({ ...context.deps, coach });
+    return { ...context, session, coach };
+  }
+
+  it('starts with the run and hears progress from GPS alone, with no UI tick', async () => {
+    const { session, coach, at } = withCoach();
+    await session.start();
+    expect(coach.start).toHaveBeenCalledTimes(1);
+
+    at(30);
+    await session.ingest(fixes(0, 30));
+    const progress = coach.update.mock.calls.at(-1)![0];
+    expect(progress.distanceMeters).toBeGreaterThan(80);
+    expect(progress.movingSeconds).toBeGreaterThan(25);
+    expect(progress.currentSpeed).toBeGreaterThan(2);
+  });
+
+  it('stops speaking when the run ends or is discarded', async () => {
+    const finished = withCoach();
+    await finished.session.start();
+    await finished.session.finish();
+    expect(finished.coach.stop).toHaveBeenCalledTimes(1);
+
+    const discarded = withCoach();
+    await discarded.session.start();
+    await discarded.session.discard();
+    expect(discarded.coach.stop).toHaveBeenCalledTimes(1);
+  });
+
+  it('stays quiet while paused', async () => {
+    const { session, coach, at } = withCoach();
+    await session.start();
+    await session.pause();
+    at(30);
+    await session.ingest(fixes(1, 30));
+    expect(coach.update).not.toHaveBeenCalled();
+  });
+
+  it('continues a restored run from where it got to', async () => {
+    const { session, coach, tracker, at, deps } = withCoach();
+    await session.start();
+    at(60);
+    await session.ingest(fixes(0, 60));
+    tracker.kill();
+
+    const restored = createRunSession({ ...deps, coach });
+    await restored.attach();
+    expect(coach.resume.mock.calls.at(-1)![0]).toBeGreaterThan(150);
+  });
+});

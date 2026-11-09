@@ -25,6 +25,7 @@ export function runRoutes(): Router {
   // Static paths before `/:id`.
   router.get('/stats', runController.stats);
   router.get('/progress', runController.progress);
+  router.get('/report', runController.report);
   router.get('/:id', requireUuidParam, runController.detail);
   router.delete('/:id', requireUuidParam, runController.remove);
   router.post('/:id/points', requireUuidParam, validate({ body: appendRunPointsSchema }), runController.appendPoints);
