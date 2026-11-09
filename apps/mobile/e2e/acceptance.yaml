@@ -1,0 +1,85 @@
+# NEXT STRIDE — Phase 1 acceptance flow (Maestro: https://maestro.mobile.dev)
+#
+# Covers: onboarding → register → profile setup → app restart (session restore)
+#         → edit profile → log out.
+#
+# Prerequisites: API on :4000, `npm run dev:mobile -- --port 8082`, an iOS
+# simulator with Expo Go. Run: maestro test apps/mobile/e2e/acceptance.yaml
+appId: host.exp.Exponent
+env:
+  APP_URL: exp://127.0.0.1:8082
+---
+- evalScript: ${output.suffix = Date.now().toString(36)}
+- launchApp:
+    clearState: true
+- openLink: ${APP_URL}
+
+# 1–2. Open NEXT STRIDE and complete onboarding
+- extendedWaitUntil:
+    visible: { id: "onboarding" }
+    timeout: 60000
+- tapOn: { id: "onboarding-next" }
+- tapOn: { id: "onboarding-next" }
+- tapOn: "Get started"
+
+# 3. Register
+- extendedWaitUntil:
+    visible: { id: "welcome" }
+    timeout: 10000
+- tapOn: { id: "welcome-register" }
+- tapOn: { id: "register-name" }
+- inputText: "Ada Runner"
+- tapOn: { id: "register-username" }
+- inputText: "ada_${output.suffix}"
+- tapOn: { id: "register-email" }
+- inputText: "ada_${output.suffix}@example.com"
+- tapOn: { id: "register-password" }
+- inputText: "stride123"
+- hideKeyboard
+- tapOn: { id: "register-submit" }
+
+# 6. Complete profile
+- extendedWaitUntil:
+    visible: { id: "profile-setup" }
+    timeout: 15000
+- tapOn: { id: "field-dob" }
+- inputText: "19940512"
+- hideKeyboard
+- tapOn: { id: "setup-next" }
+- tapOn: { id: "experience-INTERMEDIATE" }
+- tapOn: { id: "distance-HALF_MARATHON" }
+- tapOn: { id: "setup-next" }
+- tapOn: { id: "goal-GET_FASTER" }
+- tapOn: { id: "setup-next" }
+- extendedWaitUntil:
+    visible: { id: "home" }
+    timeout: 15000
+- assertVisible: "Ada"
+
+# 5. Remain authenticated after restarting the app
+- stopApp
+- launchApp
+- openLink: ${APP_URL}
+- extendedWaitUntil:
+    visible: { id: "home" }
+    timeout: 60000
+
+# 7. Edit profile
+- tapOn: { id: "tab-profile" }
+- tapOn: { id: "profile-edit" }
+- tapOn: { id: "field-bio" }
+- inputText: "Chasing a sub-90 half."
+- hideKeyboard
+- tapOn: { id: "edit-save" }
+- extendedWaitUntil:
+    visible: { id: "profile-bio" }
+    timeout: 10000
+- assertVisible: "Chasing a sub-90 half."
+
+# 8. Log out
+- tapOn: { id: "tab-settings" }
+- tapOn: { id: "settings-logout" }
+- tapOn: "Log out"
+- extendedWaitUntil:
+    visible: { id: "welcome" }
+    timeout: 10000

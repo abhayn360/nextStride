@@ -1,0 +1,202 @@
+// NEXT STRIDE — Phase 1 data model.
+// Connection URL lives in prisma.config.ts (Prisma 7), never in this file.
+
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Gender {
+  FEMALE
+  MALE
+  NON_BINARY
+  PREFER_NOT_TO_SAY
+}
+
+enum RunningExperience {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+  ELITE
+}
+
+enum PreferredDistance {
+  FIVE_K
+  TEN_K
+  HALF_MARATHON
+  MARATHON
+  ULTRA
+  NO_PREFERENCE
+}
+
+enum FitnessGoal {
+  BUILD_HABIT
+  LOSE_WEIGHT
+  IMPROVE_ENDURANCE
+  GET_FASTER
+  TRAIN_FOR_RACE
+  STAY_HEALTHY
+  REDUCE_STRESS
+}
+
+/// Account and credentials. Personal details live in UserProfile.
+model User {
+  id           String    @id @default(uuid()) @db.Uuid
+  /// Always stored lower-cased (normalised by the shared Zod schema).
+  email        String    @unique @db.VarChar(254)
+  /// Always stored lower-cased.
+  username     String    @unique @db.VarChar(20)
+  /// Argon2id hash. Plain-text passwords are never stored.
+  passwordHash String    @map("password_hash")
+  /// Bumped on password reset; access tokens carrying an older version are rejected.
+  tokenVersion Int       @default(0) @map("token_version")
+  lastLoginAt  DateTime? @map("last_login_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  profile             UserProfile?
+  refreshTokens       RefreshToken[]
+  passwordResetTokens PasswordResetToken[]
+  runs                Run[]
+
+  @@index([createdAt])
+  @@map("users")
+}
+
+model UserProfile {
+  id                String             @id @default(uuid()) @db.Uuid
+  userId            String             @unique @map("user_id") @db.Uuid
+  fullName          String             @map("full_name") @db.VarChar(80)
+  avatarUrl         String?            @map("avatar_url")
+  dateOfBirth       DateTime?          @map("date_of_birth") @db.Date
+  heightCm          Decimal?           @map("height_cm") @db.Decimal(5, 1)
+  weightKg          Decimal?           @map("weight_kg") @db.Decimal(5, 1)
+  gender            Gender?
+  runningExperience RunningExperience? @map("running_experience")
+  preferredDistance PreferredDistance? @map("preferred_distance")
+  fitnessGoals      FitnessGoal[]      @default([]) @map("fitness_goals")
+  bio               String?            @db.VarChar(280)
+
+  // Optional personal information is private by default.
+  showAge         Boolean @default(false) @map("show_age")
+  showBodyMetrics Boolean @default(false) @map("show_body_metrics")
+  showGender      Boolean @default(false) @map("show_gender")
+
+  /// Set the first time the profile-setup fields are all present.
+  completedAt DateTime? @map("completed_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([runningExperience])
+  @@map("user_profiles")
+}
+
+/// Opaque refresh tokens, stored as SHA-256 hashes. Rotated on every use;
+/// tokens issued from the same login share a familyId so reuse of a rotated
+/// token revokes the whole family.
+model RefreshToken {
+  id           String    @id @default(uuid()) @db.Uuid
+  userId       String    @map("user_id") @db.Uuid
+  tokenHash    String    @unique @map("token_hash") @db.Char(64)
+  familyId     String    @map("family_id") @db.Uuid
+  expiresAt    DateTime  @map("expires_at")
+  revokedAt    DateTime? @map("revoked_at")
+  replacedById String?   @unique @map("replaced_by_id") @db.Uuid
+  userAgent    String?   @map("user_agent") @db.VarChar(255)
+  ipAddress    String?   @map("ip_address") @db.VarChar(45)
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  user       User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  replacedBy RefreshToken? @relation("RefreshTokenRotation", fields: [replacedById], references: [id], onDelete: SetNull)
+  replaces   RefreshToken? @relation("RefreshTokenRotation")
+
+  @@index([userId])
+  @@index([familyId])
+  @@index([expiresAt])
+  @@map("refresh_tokens")
+}
+
+/// Single-use password reset tokens, stored as SHA-256 hashes.
+model PasswordResetToken {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  tokenHash String    @unique @map("token_hash") @db.Char(64)
+  expiresAt DateTime  @map("expires_at")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("password_reset_tokens")
+}
+
+enum RunStatus {
+  IN_PROGRESS
+  COMPLETED
+}
+
+/// A recorded run. Metrics are computed server-side from RunPoints on completion
+/// using the same algorithm the app uses live (packages/shared/run-metrics).
+model Run {
+  id                      String    @id @default(uuid()) @db.Uuid
+  userId                  String    @map("user_id") @db.Uuid
+  /// Generated on the device when the run starts; idempotency key for creation.
+  clientId                String    @map("client_id") @db.Uuid
+  status                  RunStatus @default(IN_PROGRESS)
+  /// Measured, filtered GPS distance.
+  distanceMeters          Float     @default(0) @map("distance_meters")
+  /// Active time excluding manual pauses (device clock).
+  durationSeconds         Int       @default(0) @map("duration_seconds")
+  movingTimeSeconds       Int       @default(0) @map("moving_time_seconds")
+  averagePaceSecondsPerKm Float?    @map("average_pace_seconds_per_km")
+  /// Metres per second, based on moving time.
+  averageSpeed            Float?    @map("average_speed")
+  /// Estimate only (weight × distance model).
+  caloriesEstimate        Int?      @map("calories_estimate")
+  pointCount              Int       @default(0) @map("point_count")
+  /// Downsampled [lng, lat] lines per segment, for list thumbnails without loading points.
+  routePreview            Json?     @map("route_preview")
+  startedAt               DateTime  @map("started_at")
+  completedAt             DateTime? @map("completed_at")
+  createdAt               DateTime  @default(now()) @map("created_at")
+  updatedAt               DateTime  @updatedAt @map("updated_at")
+
+  user   User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  points RunPoint[]
+
+  @@unique([userId, clientId])
+  @@index([userId, status, startedAt(sort: Desc)])
+  @@index([userId, status, distanceMeters(sort: Desc)])
+  @@map("runs")
+}
+
+model RunPoint {
+  id         BigInt   @id @default(autoincrement())
+  runId      String   @map("run_id") @db.Uuid
+  latitude   Float
+  longitude  Float
+  altitude   Float?
+  /// Horizontal accuracy in metres as reported by the device.
+  accuracy   Float?
+  /// Increments on each resume; distance is never measured across segments.
+  segment    Int      @default(0)
+  recordedAt DateTime @map("recorded_at")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  run Run @relation(fields: [runId], references: [id], onDelete: Cascade)
+
+  /// One fix per timestamp per run: makes uploads idempotent (duplicates are skipped).
+  @@unique([runId, recordedAt])
+  @@map("run_points")
+}
